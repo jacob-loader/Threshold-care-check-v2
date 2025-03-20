@@ -1,171 +1,177 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import toast from 'react-hot-toast'
+import Link from 'next/link'
+import { toast } from 'react-hot-toast'
+
+interface LovedOne {
+  id: string
+  name: string
+  phoneNumber: string
+  lastCheckIn: string | null
+  nextCheckIn: string | null
+}
+
+interface CheckIn {
+  id: string
+  lovedOneId: string
+  status: 'pending' | 'completed' | 'missed'
+  scheduledFor: string
+  completedAt: string | null
+}
 
 export default function Dashboard() {
+  const { data: session, status } = useSession()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('overview')
+  const [lovedOnes, setLovedOnes] = useState<LovedOne[]>([])
+  const [upcomingCheckIns, setUpcomingCheckIns] = useState<CheckIn[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Mock data - replace with actual data from API
-  const lovedOnes = [
-    {
-      id: 1,
-      name: 'John Doe',
-      lastCheckIn: '2024-02-20T10:30:00Z',
-      nextCheckIn: '2024-02-20T15:00:00Z',
-      status: 'active',
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      lastCheckIn: '2024-02-20T09:15:00Z',
-      nextCheckIn: '2024-02-20T14:00:00Z',
-      status: 'active',
-    },
-  ]
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login')
+    }
+  }, [status, router])
 
-  const handleAddLovedOne = () => {
-    router.push('/dashboard/loved-ones/new')
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [lovedOnesResponse, checkInsResponse] = await Promise.all([
+          fetch('/api/loved-ones'),
+          fetch('/api/check-ins/upcoming'),
+        ])
+
+        if (!lovedOnesResponse.ok || !checkInsResponse.ok) {
+          throw new Error('Failed to fetch dashboard data')
+        }
+
+        const [lovedOnesData, checkInsData] = await Promise.all([
+          lovedOnesResponse.json(),
+          checkInsResponse.json(),
+        ])
+
+        setLovedOnes(lovedOnesData)
+        setUpcomingCheckIns(checkInsData)
+      } catch (error) {
+        toast.error('Failed to load dashboard data')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (status === 'authenticated') {
+      fetchDashboardData()
+    }
+  }, [status])
+
+  if (status === 'loading' || isLoading) {
+    return (
+      <div className="min-h-screen bg-secondary flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-secondary">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-primary">Dashboard</h1>
-          <button
-            onClick={handleAddLovedOne}
-            className="btn-primary"
-          >
-            Add Loved One
-          </button>
-        </div>
+      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold text-primary">Dashboard</h1>
+            <Link
+              href="/loved-ones/new"
+              className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              Add Loved One
+            </Link>
+          </div>
 
-        {/* Navigation Tabs */}
-        <div className="border-b border-gray-200 mb-8">
-          <nav className="-mb-px flex space-x-8">
-            {['overview', 'loved-ones', 'check-ins', 'circle-of-care', 'gifts'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`${
-                  activeTab === tab
-                    ? 'border-accent text-accent'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize`}
-              >
-                {tab.replace('-', ' ')}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Content Area */}
-        <div className="bg-white rounded-lg shadow p-6">
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-primary">Overview</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="card">
-                  <h3 className="text-lg font-medium text-primary mb-2">Active Loved Ones</h3>
-                  <p className="text-3xl font-bold text-accent">{lovedOnes.length}</p>
-                </div>
-                <div className="card">
-                  <h3 className="text-lg font-medium text-primary mb-2">Pending Check-ins</h3>
-                  <p className="text-3xl font-bold text-accent">2</p>
-                </div>
-                <div className="card">
-                  <h3 className="text-lg font-medium text-primary mb-2">Circle Members</h3>
-                  <p className="text-3xl font-bold text-accent">5</p>
-                </div>
-              </div>
-
-              <div className="mt-8">
-                <h3 className="text-xl font-semibold text-primary mb-4">Recent Activity</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Loved Ones Section */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Loved Ones</h2>
+              {lovedOnes.length === 0 ? (
+                <p className="text-gray-500">No loved ones added yet.</p>
+              ) : (
                 <div className="space-y-4">
                   {lovedOnes.map((lovedOne) => (
                     <div
                       key={lovedOne.id}
-                      className="flex items-center justify-between p-4 bg-secondary rounded-lg"
+                      className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
                     >
-                      <div>
-                        <h4 className="font-medium text-primary">{lovedOne.name}</h4>
-                        <p className="text-sm text-gray-600">
-                          Last check-in: {new Date(lovedOne.lastCheckIn).toLocaleString()}
-                        </p>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium text-gray-900">{lovedOne.name}</h3>
+                          <p className="text-sm text-gray-500">{lovedOne.phoneNumber}</p>
+                        </div>
+                        <Link
+                          href={`/loved-ones/${lovedOne.id}`}
+                          className="text-primary hover:text-primary/80 text-sm"
+                        >
+                          View Details
+                        </Link>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600">
-                          Next check-in: {new Date(lovedOne.nextCheckIn).toLocaleString()}
-                        </p>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Active
-                        </span>
+                      <div className="mt-2 text-sm text-gray-500">
+                        <p>Last Check-in: {lovedOne.lastCheckIn || 'Never'}</p>
+                        <p>Next Check-in: {lovedOne.nextCheckIn || 'Not scheduled'}</p>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
+              )}
             </div>
-          )}
 
-          {activeTab === 'loved-ones' && (
-            <div>
-              <h2 className="text-2xl font-semibold text-primary mb-6">Loved Ones</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {lovedOnes.map((lovedOne) => (
-                  <div key={lovedOne.id} className="card">
-                    <h3 className="text-xl font-semibold text-primary mb-2">{lovedOne.name}</h3>
-                    <div className="space-y-2">
-                      <p className="text-sm text-gray-600">
-                        Last check-in: {new Date(lovedOne.lastCheckIn).toLocaleString()}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Next check-in: {new Date(lovedOne.nextCheckIn).toLocaleString()}
-                      </p>
+            {/* Upcoming Check-ins Section */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Upcoming Check-ins</h2>
+              {upcomingCheckIns.length === 0 ? (
+                <p className="text-gray-500">No upcoming check-ins.</p>
+              ) : (
+                <div className="space-y-4">
+                  {upcomingCheckIns.map((checkIn) => (
+                    <div
+                      key={checkIn.id}
+                      className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium text-gray-900">
+                            {lovedOnes.find((lo) => lo.id === checkIn.lovedOneId)?.name}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            Scheduled for: {new Date(checkIn.scheduledFor).toLocaleString()}
+                          </p>
+                        </div>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs ${
+                            checkIn.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : checkIn.status === 'completed'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {checkIn.status.charAt(0).toUpperCase() + checkIn.status.slice(1)}
+                        </span>
+                      </div>
+                      {checkIn.status === 'pending' && (
+                        <div className="mt-2">
+                          <Link
+                            href={`/check-ins/${checkIn.id}`}
+                            className="text-primary hover:text-primary/80 text-sm"
+                          >
+                            Complete Check-in
+                          </Link>
+                        </div>
+                      )}
                     </div>
-                    <div className="mt-4 flex space-x-2">
-                      <button className="btn-secondary text-sm">Edit</button>
-                      <button className="btn-primary text-sm">View Details</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-
-          {activeTab === 'check-ins' && (
-            <div>
-              <h2 className="text-2xl font-semibold text-primary mb-6">Check-ins</h2>
-              <div className="space-y-4">
-                {/* Add check-in history and management interface */}
-                <p className="text-gray-600">Check-in history and management interface coming soon...</p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'circle-of-care' && (
-            <div>
-              <h2 className="text-2xl font-semibold text-primary mb-6">Circle of Care</h2>
-              <div className="space-y-4">
-                {/* Add circle of care management interface */}
-                <p className="text-gray-600">Circle of care management interface coming soon...</p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'gifts' && (
-            <div>
-              <h2 className="text-2xl font-semibold text-primary mb-6">Gift Marketplace</h2>
-              <div className="space-y-4">
-                {/* Add gift marketplace interface */}
-                <p className="text-gray-600">Gift marketplace interface coming soon...</p>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

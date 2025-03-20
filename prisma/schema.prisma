@@ -1,3 +1,6 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,75 +10,149 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type             String
+  provider         String
+  providerAccountId String
+  refresh_token    String? @db.Text
+  access_token     String? @db.Text
+  expires_at       Int?
+  token_type       String?
+  scope            String?
+  id_token         String? @db.Text
+  session_state    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model User {
   id            String    @id @default(cuid())
-  name          String
-  email         String    @unique
-  phoneNumber   String?
-  password      String
-  role          Role      @default(CAREGIVER)
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  isPremium     Boolean   @default(false)
+  aiCallEnabled Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  lovedOnes     LovedOne[]
-  circleMembers CircleMember[]
+
+  accounts     Account[]
+  sessions     Session[]
+  lovedOnes    LovedOne[]
+  circleMember CircleMember[]
+  giftOrders   GiftOrder[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
 
 model LovedOne {
-  id            String    @id @default(cuid())
-  name          String
-  phoneNumber   String
-  dateOfBirth   DateTime?
-  caregivers    User[]
-  checkIns      CheckIn[]
-  schedules     Schedule[]
-  circleMembers CircleMember[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  name        String
+  phoneNumber String
+  dateOfBirth DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String
+  checkIns         CheckIn[]
+  checkInSchedules CheckInSchedule[]
+  circleMember     CircleMember[]
 }
 
 model CheckIn {
-  id          String    @id @default(cuid())
-  lovedOneId  String
-  lovedOne    LovedOne  @relation(fields: [lovedOneId], references: [id])
-  location    String?
-  latitude    Float?
-  longitude   Float?
-  status      CheckInStatus @default(COMPLETED)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String         @id @default(cuid())
+  status       CheckInStatus  @default(PENDING)
+  scheduledFor DateTime
+  completedAt  DateTime?
+  location     String?
+  latitude     Float?
+  longitude    Float?
+  missedReason String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  lovedOne   LovedOne @relation(fields: [lovedOneId], references: [id], onDelete: Cascade)
+  lovedOneId String
 }
 
-model Schedule {
-  id          String    @id @default(cuid())
-  lovedOneId  String
-  lovedOne    LovedOne  @relation(fields: [lovedOneId], references: [id])
-  time        String
-  days        String[]
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+model CheckInSchedule {
+  id          String   @id @default(cuid())
+  frequency   String   @default("daily") // daily, weekly, monthly
+  time        DateTime // Time of day for the check-in
+  nextCheckIn DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lovedOne   LovedOne @relation(fields: [lovedOneId], references: [id], onDelete: Cascade)
+  lovedOneId String
 }
 
 model CircleMember {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  lovedOneId  String
-  lovedOne    LovedOne  @relation(fields: [lovedOneId], references: [id])
-  role        CircleRole
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  role      String   @default("member") // admin, member
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  lovedOne  LovedOne @relation(fields: [lovedOneId], references: [id], onDelete: Cascade)
+  lovedOneId String
 }
 
-enum Role {
-  CAREGIVER
-  ADMIN
+model Gift {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  giftOrders GiftOrder[]
+}
+
+model GiftOrder {
+  id        String   @id @default(cuid())
+  status    String   @default("pending") // pending, paid, shipped, delivered
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  gift   Gift   @relation(fields: [giftId], references: [id], onDelete: Cascade)
+  giftId String
 }
 
 enum CheckInStatus {
   PENDING
   COMPLETED
   MISSED
+}
+
+enum Role {
+  CAREGIVER
+  ADMIN
 }
 
 enum CircleRole {

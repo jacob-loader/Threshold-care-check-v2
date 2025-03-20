@@ -1,76 +1,41 @@
 import Link from 'next/link'
+import { getServerSession } from 'next-auth'
+import { authOptions } from './api/auth/[...nextauth]/route'
+import { redirect } from 'next/navigation'
 
-export default function Home() {
+export default async function Home() {
+  const session = await getServerSession(authOptions)
+
+  if (session?.user) {
+    redirect('/dashboard')
+  }
+
   return (
-    <div className="space-y-16">
-      {/* Hero Section */}
-      <section className="text-center py-20">
-        <h1 className="text-5xl font-bold text-primary mb-6">
-          Threshold Care Check
-        </h1>
-        <p className="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
-          A free SMS-based check-in system that helps caregivers stay connected with their loved ones through simple, reliable communication.
-        </p>
-        <div className="space-x-4">
-          <Link href="/register" className="btn-primary">
-            Get Started Free
+    <div className="min-h-screen bg-secondary flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-primary">
+            Welcome to Threshold Care Check
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Please sign in to continue
+          </p>
+        </div>
+        <div className="mt-8 space-y-4">
+          <Link
+            href="/login"
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+          >
+            Sign in
           </Link>
-          <Link href="/about" className="btn-secondary">
-            Learn More
+          <Link
+            href="/register"
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-primary bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+          >
+            Create account
           </Link>
         </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="grid md:grid-cols-3 gap-8">
-        <div className="card">
-          <h3 className="text-xl font-semibold text-primary mb-4">SMS Check-ins</h3>
-          <p className="text-gray-600">
-            Simple, reliable SMS-based check-ins that work on any phone without requiring app installation.
-          </p>
-        </div>
-        <div className="card">
-          <h3 className="text-xl font-semibold text-primary mb-4">Location Tracking</h3>
-          <p className="text-gray-600">
-            Know your loved one's location at check-in time for added peace of mind.
-          </p>
-        </div>
-        <div className="card">
-          <h3 className="text-xl font-semibold text-primary mb-4">Circle of Care</h3>
-          <p className="text-gray-600">
-            Invite family members and healthcare providers to stay informed and involved.
-          </p>
-        </div>
-        <div className="card">
-          <h3 className="text-xl font-semibold text-primary mb-4">Smart Scheduling</h3>
-          <p className="text-gray-600">
-            Set up flexible check-in schedules and receive reminders for upcoming check-ins.
-          </p>
-        </div>
-        <div className="card">
-          <h3 className="text-xl font-semibold text-primary mb-4">Positive Affirmations</h3>
-          <p className="text-gray-600">
-            Send encouraging messages and special occasion reminders to show your care.
-          </p>
-        </div>
-        <div className="card">
-          <h3 className="text-xl font-semibold text-primary mb-4">Gift Marketplace</h3>
-          <p className="text-gray-600">
-            Access a curated marketplace to send flowers, gifts, and care packages.
-          </p>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="text-center py-16 bg-primary text-white rounded-lg">
-        <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-        <p className="mb-8 max-w-2xl mx-auto">
-          Join thousands of caregivers who trust Threshold Care Check to stay connected with their loved ones.
-        </p>
-        <Link href="/register" className="btn-secondary">
-          Create Your Free Account
-        </Link>
-      </section>
+      </div>
     </div>
   )
 } 
