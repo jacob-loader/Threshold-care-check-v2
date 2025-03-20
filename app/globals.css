@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #33421f;
+  --secondary: #eae5e1;
+  --accent: #9f542f;
+}
+
+body {
+  color: var(--primary);
+  background: var(--secondary);
+}
+
+.btn-primary {
+  @apply bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all;
+}
+
+.btn-secondary {
+  @apply bg-secondary text-primary px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all;
+}
+
+.card {
+  @apply bg-white rounded-lg shadow-md p-6;
+} 

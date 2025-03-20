@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  phoneNumber   String?
+  password      String
+  role          Role      @default(CAREGIVER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lovedOnes     LovedOne[]
+  circleMembers CircleMember[]
+}
+
+model LovedOne {
+  id            String    @id @default(cuid())
+  name          String
+  phoneNumber   String
+  dateOfBirth   DateTime?
+  caregivers    User[]
+  checkIns      CheckIn[]
+  schedules     Schedule[]
+  circleMembers CircleMember[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model CheckIn {
+  id          String    @id @default(cuid())
+  lovedOneId  String
+  lovedOne    LovedOne  @relation(fields: [lovedOneId], references: [id])
+  location    String?
+  latitude    Float?
+  longitude   Float?
+  status      CheckInStatus @default(COMPLETED)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Schedule {
+  id          String    @id @default(cuid())
+  lovedOneId  String
+  lovedOne    LovedOne  @relation(fields: [lovedOneId], references: [id])
+  time        String
+  days        String[]
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model CircleMember {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  lovedOneId  String
+  lovedOne    LovedOne  @relation(fields: [lovedOneId], references: [id])
+  role        CircleRole
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum Role {
+  CAREGIVER
+  ADMIN
+}
+
+enum CheckInStatus {
+  PENDING
+  COMPLETED
+  MISSED
+}
+
+enum CircleRole {
+  PRIMARY_CAREGIVER
+  SECONDARY_CAREGIVER
+  FAMILY_MEMBER
+  HEALTHCARE_PROVIDER
+} 
