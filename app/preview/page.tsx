@@ -43,7 +43,7 @@ const features = [
   },
 ]
 
-export default function PreviewPage() {
+const PreviewPage = () => {
   const [activeFeature, setActiveFeature] = useState(0)
 
   return (
@@ -180,4 +180,6 @@ export default function PreviewPage() {
       </div>
     </div>
   )
-} 
+}
+
+export default PreviewPage 
